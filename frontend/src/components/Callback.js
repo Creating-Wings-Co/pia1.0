@@ -149,13 +149,13 @@ function Callback() {
         }
 
         // Get access token if available
-        let token = null;
-        try {
-          token = await getAccessTokenSilently({
-            authorizationParams: {
-              audience: process.env.REACT_APP_AUTH0_AUDIENCE,
-            },
-          });
+       // let token = null;
+        //try {
+          //token = await getAccessTokenSilently({
+            //authorizationParams: {
+              //audience: process.env.REACT_APP_AUTH0_AUDIENCE,
+            //},
+          //});
         } catch (e) {
           console.warn("Could not get access token:", e);
         }
