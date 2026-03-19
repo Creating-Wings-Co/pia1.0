@@ -1,12 +1,14 @@
 import React from "react";
-import { Link, useNavigate, useSearchParams } from "react-router-dom";
+//import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { useAuth0 } from "@auth0/auth0-react";
 
 import "./dummy1_login.css";
 
 function Login() {
-    const { loginWithRedirect, isAuthenticated, isLoading } = useAuth0();
-    const navigate = useNavigate();
+    const { loginWithRedirect } = useAuth0();
+    //const { loginWithRedirect, isAuthenticated, isLoading } = useAuth0();
+    //const navigate = useNavigate();
     const [searchParams] = useSearchParams();
     const isRegistration = searchParams.get("registration") === "true";
 
