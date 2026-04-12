@@ -37,7 +37,7 @@ Thumbs.db
 !README.md
 guide.txt
 db_queries.sql
-*.txt
+!Frontend-1/src/assets/terms.txt
 !requirements.txt
 !requirements-cpu.txt
 

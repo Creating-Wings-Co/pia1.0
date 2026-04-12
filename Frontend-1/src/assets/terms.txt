@@ -1,0 +1,92 @@
+Creating Wings Co. – Terms & Conditions for Registration & Login
+Effective Date: [Insert Date]
+Welcome to Creating Wings Co. (“we,” “our,” “us”). These Terms & Conditions (“Terms”) govern your access to and use of our AI chatbot platform, website, services, mobile applications, and any tools or features we provide (collectively, the “Services”).
+By creating an account, logging in, or accessing the Services, you agree to be legally bound by these Terms.
+If you do not agree, please do not use the Services.
+ 
+1. Eligibility
+To use our platform, you must:
+•	Be at least 18 years old, OR have parental/guardian consent if under 18.
+•	Provide accurate and truthful information during registration.
+•	Not be prohibited from using our Services under applicable laws.
+ 
+2. Account Creation & Security
+When you register:
+•	You agree to provide correct and complete information.
+•	You agree to update your information if it changes.
+•	You are responsible for maintaining the confidentiality of your login credentials.
+•	You agree to notify us immediately if you suspect unauthorized access.
+We are not liable for losses arising from failure to keep your account secure.
+ 
+3. Collection of Demographic & Personal Information
+By registering and using our platform, you agree that Creating Wings Co. may collect, store, and process certain information, such as:
+•	Basic profile information: name, email, phone number
+•	Demographic details: age range, gender, education level, employment status, income range (optional), geographic region
+•	Usage data: interactions with chatbot, preferences, and feedback
+•	Optional sensitive information: related to personal experiences (e.g., financial challenges, domestic situations), only if voluntarily shared
+We collect this information to:
+•	Provide personalized support and AI-generated guidance
+•	Improve the accuracy and safety of the chatbot
+•	Develop our nonprofit programs, outreach, and research
+•	Ensure the Services are safe, inclusive, and effective
+We never sell your personal or demographic information.
+For more details, refer to our Privacy Policy.
+ 
+4. Purpose of Services
+Our AI chatbot and resources are designed to support women and individuals seeking:
+•	Financial literacy and independence
+•	Educational resources
+•	Emotional support guidance
+•	Non-legal, non-clinical, general informational help
+We do not provide professional legal, financial, or medical advice.
+Any guidance from the AI chatbot or platform is for informational and educational purposes only.
+ 
+5. User Responsibilities
+You agree not to:
+•	Use the Services for unlawful or harmful activities
+•	Attempt to exploit, reverse-engineer, or misuse the AI system
+•	Upload or share harmful, abusive, or defamatory content
+•	Impersonate another person or provide false information
+•	Use the platform in a way that harms other users or the organization
+ 
+6. Non-Emergency Platform
+Creating Wings Co. does not provide emergency, crisis, or immediate danger services.
+If you are in danger, please contact local authorities or emergency services.
+ 
+7. Intellectual Property
+All platform content, AI models, text, branding, graphics, and technology belong to Creating Wings Co.
+You may not copy, distribute, modify, or reproduce any part of the platform without written permission.
+ 
+8. Data Security & Storage
+We use commercially reasonable safeguards to protect your data.
+However, no system is 100% secure. By using the Services, you acknowledge this risk.
+ 
+9. Termination of Access
+We may suspend or terminate your account if you:
+•	Violate these Terms
+•	Misuse the platform
+•	Engage in harmful behavior towards the platform or community
+You may also delete your account at any time by contacting us.
+ 
+10. Third-Party Services
+Some features may integrate with or use third-party tools (e.g., payment systems, analytics, authentication).
+Those are governed by their respective policies.
+ 
+11. Modifications to Terms
+We may update these Terms periodically.
+Continued use after changes means you accept the revised Terms.
+ 
+12. Disclaimer & Limitation of Liability
+•	The platform is provided “as is” without warranties of any kind.
+•	Creating Wings Co. is not liable for decisions made based on AI-generated responses.
+•	We are not responsible for interruptions, errors, data loss, or unauthorized access incidents.
+•	You use the platform at your own risk.
+ 
+13. Governing Law
+These Terms are governed by the laws of the State of Connecticut, USA.
+ 
+14. Contact Information
+For questions or concerns:
+📧 info@creatingwings.org
+🌐 www.creatingwings.org",
+
