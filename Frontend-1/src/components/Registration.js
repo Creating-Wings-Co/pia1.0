@@ -4,7 +4,6 @@ import { Component } from "react";
 import { Link } from "react-router-dom";
 import { validateTerms } from "../utils/validators";
 import "./dummy2_register.css";
-import termsText from "../assets/terms.txt";
 
 //backend base url used when the form submits data
 const AUTH_BASE = process.env.REACT_APP_AUTH_BACKEND_URL || "http://localhost:3000";  
@@ -180,7 +179,7 @@ handleRegister = async (e) => {
       fullName: fullNameFromAuth || "",
     });
 
-    fetch(termsText)
+    fetch("/terms.txt")
       .then((res) => res.text())
       .then((text) => this.setState({ termsContent: text }));
   }
