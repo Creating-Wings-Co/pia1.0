@@ -7,8 +7,9 @@ class Config:
     # Google Gemini API
     GOOGLE_GEMINI_API_KEY = os.getenv("GOOGLE_GEMINI_API_KEY", "").strip()
     
-    # Database
-    DATABASE_PATH = os.getenv("DATABASE_PATH", "chatbot.db")
+    # MongoDB
+    MONGODB_URI = os.getenv("MONGODB_URI", "").strip()
+    MONGODB_DB = os.getenv("MONGODB_DB", "creating_wings").strip()
     
     # Vector Database
     VECTOR_DB_PATH = os.getenv("VECTOR_DB_PATH", "./vector_db")
