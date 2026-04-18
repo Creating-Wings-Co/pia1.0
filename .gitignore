@@ -33,13 +33,6 @@ yarn-error.log*
 Thumbs.db
 
 # Documentation and non-code files
-*.md
-!README.md
-guide.txt
-db_queries.sql
-*.txt
-!requirements.txt
-!requirements-cpu.txt
 
 # AWS/Documentation
 AWS_*.md
