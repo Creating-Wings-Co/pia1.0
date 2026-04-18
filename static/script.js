@@ -32,17 +32,17 @@ document.addEventListener('DOMContentLoaded', () => {
         // Clear redirect flag since we successfully got userId
         sessionStorage.removeItem('redirectingToAuth');
         
-        // UserId passed directly - user already registered in FastAPI
-        userId = parseInt(userIdParam);
-        if (isNaN(userId)) {
+        // UserId is the Auth0 subject, e.g. auth0|abc123.
+        userId = userIdParam;
+        if (!userId) {
             console.error('❌ Invalid userId:', userIdParam);
             // Redirect to frontend for authentication
             console.log('❌ Invalid userId - redirecting to frontend');
             redirectToFrontend();
             return;
         }
-        console.log('✅ Parsed userId as number:', userId);
-        localStorage.setItem('userId', userId.toString());
+        console.log('✅ UserId parsed:', userId);
+        localStorage.setItem('userId', userId);
         console.log('✅ UserId stored in localStorage:', userId);
         
         // Clean URL immediately to prevent re-reading
@@ -87,10 +87,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const sessionUserId = sessionStorage.getItem('auth_userId');
         if (sessionUserId) {
             console.log('✅ UserId found in sessionStorage:', sessionUserId);
-            userId = parseInt(sessionUserId);
+            userId = sessionUserId;
             sessionStorage.removeItem('auth_userId'); // Clean up
-            if (!isNaN(userId)) {
-                localStorage.setItem('userId', userId.toString());
+            if (userId) {
+                localStorage.setItem('userId', userId);
                 loadUserProfile(userId);
                 return;
             }
@@ -100,8 +100,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const storedUserId = localStorage.getItem('userId');
         if (storedUserId) {
             console.log('✅ UserId found in localStorage:', storedUserId);
-            userId = parseInt(storedUserId);
-            if (isNaN(userId)) {
+            userId = storedUserId;
+            if (!userId) {
                 console.error('❌ Invalid userId in localStorage:', storedUserId);
                 localStorage.removeItem('userId');
                 redirectToFrontend();
@@ -142,7 +142,7 @@ document.addEventListener('DOMContentLoaded', () => {
 function redirectToFrontend() {
     // TODO: Replace 'your-app-name.vercel.app' with your actual Vercel frontend URL
     // Example: 'https://creating-wings-frontend.vercel.app'
-    const frontendUrl = 'https://poc-sigma-ten.vercel.app'; // ⚠️ UPDATE THIS WITH YOUR VERCEL URL!
+    const frontendUrl = "http://localhost:3000";
     
     console.log('🔐 Authentication required - redirecting to frontend:', frontendUrl);
     
@@ -292,9 +292,10 @@ async function initializeUser() {
 async function loadUserProfile(userId) {
     console.log('📥 Loading user profile for userId:', userId);
     try {
-        const response = await fetch(`${API_BASE}/api/user/${userId}`);
+        const profileUrl = `${API_BASE}/api/user/${encodeURIComponent(userId)}`;
+        const response = await fetch(profileUrl);
         console.log('📡 API response status:', response.status);
-        console.log('📡 API URL:', `${API_BASE}/api/user/${userId}`);
+        console.log('📡 API URL:', profileUrl);
         
         if (response.ok) {
             const userData = await response.json();
@@ -704,5 +705,4 @@ function scrollToBottom() {
     const messagesContainer = document.getElementById('chatMessages');
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
-
 

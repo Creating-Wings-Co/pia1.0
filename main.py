@@ -8,6 +8,7 @@ import uuid
 from datetime import datetime
 import logging
 import json
+from urllib.parse import quote
 
 from config import Config
 from database import Database
@@ -39,7 +40,10 @@ app.add_middleware(
 )
 
 # Initialize services
-db = Database(db_path=Config.DATABASE_PATH)
+db = Database(
+    mongo_uri=Config.MONGODB_URI,
+    db_name=Config.MONGODB_DB,
+)
 
 vector_store = VectorStore(
     db_path=Config.VECTOR_DB_PATH,
@@ -54,15 +58,8 @@ rag_system = RAGSystem(
 
 web_search_service = WebSearchService()
 
-# Request/Response Models
-class ChatMessage(BaseModel):
-    role: str
-    content: str
-    timestamp: Optional[str] = None
-
-
 class ChatRequest(BaseModel):
-    user_id: str  # Accept as string, convert to int
+    user_id: str
     conversation_id: Optional[str] = None
     message: str
 
@@ -77,34 +74,37 @@ class ChatResponse(BaseModel):
 class UserRegistration(BaseModel):
     name: str
     email: EmailStr
-    phone: Optional[str] = None
 
 
 class Auth0UserInfo(BaseModel):
     sub: str  # Auth0 user ID
     name: str
     email: str
-    picture: Optional[str] = None
-    # Registration metadata (optional)
-    phone: Optional[str] = None
-    age: Optional[int] = None
-    financial_goals: Optional[str] = None
     income_range: Optional[str] = None
     employment_status: Optional[str] = None
     marital_status: Optional[str] = None
-    dependents: Optional[int] = None
-    investment_experience: Optional[str] = None
-    risk_tolerance: Optional[str] = None
     education: Optional[str] = None
     location: Optional[str] = None
-    username: Optional[str] = None
+    acceptedTerms: bool = True
+    is18OrOlder: bool = True
 
 
 class UserResponse(BaseModel):
-    user_id: int
+    user_id: str
     name: str
     email: str
-    created_at: str
+
+
+def build_user_metadata(db_user: Optional[Dict]) -> Optional[Dict]:
+    if not db_user:
+        return None
+    return {
+        "income_range": db_user.get("householdIncomeRange"),
+        "marital_status": db_user.get("maritalStatus"),
+        "employment_status": db_user.get("employmentStatus"),
+        "education": db_user.get("educationLevel"),
+        "location": db_user.get("location"),
+    }
 
 
 # Dependency to get current user from token
@@ -167,19 +167,11 @@ async def auth_callback_get(
     sub: Optional[str] = None,
     name: Optional[str] = None,
     email: Optional[str] = None,
-    picture: Optional[str] = None,
-    phone: Optional[str] = None,
-    age: Optional[str] = None,
-    financial_goals: Optional[str] = None,
     income_range: Optional[str] = None,
     employment_status: Optional[str] = None,
     marital_status: Optional[str] = None,
-    dependents: Optional[str] = None,
-    investment_experience: Optional[str] = None,
-    risk_tolerance: Optional[str] = None,
     education: Optional[str] = None,
     location: Optional[str] = None,
-    username: Optional[str] = None,
     isRegistration: Optional[str] = None
 ):
     """
@@ -188,37 +180,27 @@ async def auth_callback_get(
     """
     if not sub or not name or not email:
         raise HTTPException(status_code=400, detail="Missing required user information")
-    
-    # Convert string params to proper types
-    age_int = int(age) if age and age.isdigit() else None
-    dependents_int = int(dependents) if dependents and dependents.isdigit() else None
-    
+
     # Create or update user
     logger.info(f"Creating/updating user via GET - sub: {sub}, name: {name}, email: {email}")
     user_id = db.create_or_update_user_from_auth0(
         auth0_sub=sub,
         name=name,
         email=email,
-        picture=picture,
-        phone=phone if phone else None,
-        age=age_int,
-        financial_goals=financial_goals if financial_goals else None,
         income_range=income_range if income_range else None,
         employment_status=employment_status if employment_status else None,
         marital_status=marital_status if marital_status else None,
-        dependents=dependents_int,
-        investment_experience=investment_experience if investment_experience else None,
-        risk_tolerance=risk_tolerance if risk_tolerance else None,
         education=education if education else None,
         location=location if location else None,
-        username=username if username else None
+        accepted_terms=True,
+        is_18_or_older=True,
     )
     
     if not user_id:
         raise HTTPException(status_code=500, detail="Failed to create/update user")
     
     # Redirect to chatbot with userId
-    return RedirectResponse(url=f"/?userId={user_id}", status_code=302)
+    return RedirectResponse(url=f"/?userId={quote(user_id, safe='')}", status_code=302)
 
 
 @app.post("/api/auth/callback")
@@ -248,97 +230,70 @@ async def auth_callback(user_info: Auth0UserInfo, authorization: Optional[str] =
         name = user_info.name
         email = user_info.email
     
-    # Create or update user in database with metadata
+    # Create or update user in database.
     logger.info(f"Creating/updating user - auth0_sub: {auth0_sub}, name: {name}, email: {email}")
     user_id = db.create_or_update_user_from_auth0(
         auth0_sub=auth0_sub,
         name=name,
         email=email,
-        picture=user_info.picture,
-        phone=user_info.phone,
-        age=user_info.age,
-        financial_goals=user_info.financial_goals,
         income_range=user_info.income_range,
         employment_status=user_info.employment_status,
         marital_status=user_info.marital_status,
-        dependents=user_info.dependents,
-        investment_experience=user_info.investment_experience,
-        risk_tolerance=user_info.risk_tolerance,
         education=user_info.education,
         location=user_info.location,
-        username=user_info.username
+        accepted_terms=user_info.acceptedTerms,
+        is_18_or_older=user_info.is18OrOlder,
     )
     
     if not user_id:
         raise HTTPException(status_code=500, detail="Failed to create/update user")
     
     user = db.get_user(user_id)
-    logger.info(f"User retrieved - id: {user_id}, name: {user.get('name')}, email: {user.get('email')}")
+    logger.info(f"User retrieved - auth0_sub: {user_id}, name: {user.get('fullName')}, email: {user.get('email')}")
     
     return UserResponse(
         user_id=user_id,
-        name=user['name'],
+        name=user.get('fullName') or "",
         email=user['email'],
-        created_at=user['created_at']
     )
-
 
 @app.get("/api/user/me")
 async def get_current_user_info(user: Dict = Depends(get_user_from_token)):
-    """Get current user info from token - creates user if doesn't exist"""
     auth0_sub = user.get("sub")
     if not auth0_sub:
         raise HTTPException(status_code=400, detail="Invalid user token")
-    
-    # Get user from database
-    db_user = db.get_user_by_auth0_sub(auth0_sub) 
-    
-    # If user doesn't exist, create them from token info
+
+    # Retrieve user from database using Auth0 sub
+    db_user = db.get_user_by_auth0_sub(auth0_sub)
+
+    # If user doesn't exist in database, create a new user record
     if not db_user:
-        name = user.get("name", "User")
-        email = user.get("email", "")
-        
-        if not email:
-            raise HTTPException(status_code=400, detail="Email not found in token")
-        
-        # Create user in database
-        user_id = db.create_or_update_user_from_auth0(
-            auth0_sub=auth0_sub,
-            name=name,
-            email=email,
-        )
-        
-        if not user_id:
-            raise HTTPException(status_code=500, detail="Failed to create user")
-        
-        # Get the newly created user
-        db_user = db.get_user(user_id)
-        if not db_user:
-            raise HTTPException(status_code=500, detail="Failed to retrieve created user")
-    
-    # Return full user info including metadata
+        raise HTTPException(status_code=404, detail="User not found")
+
     return {
-        "user_id": db_user['id'],
-        "name": db_user['name'],
-        "email": db_user['email'],
-        "picture": None,  # Can be added if stored
-        "created_at": db_user['created_at']
+        "user_id": db_user["auth0_sub"],
+        "name": db_user["fullName"],
+        "email": db_user["email"],
+        "location": db_user.get("location"),
+        "education": db_user.get("educationLevel"),
+        "employment_status": db_user.get("employmentStatus"),
+        "income_range": db_user.get("householdIncomeRange"),
+        "marital_status": db_user.get("maritalStatus"),
     }
 
 
+
 @app.get("/api/user/{user_id}")
-async def get_user_by_id(user_id: int):
+async def get_user_by_id(user_id: str):
     """Get user info by ID (for chatbot display)"""
     db_user = db.get_user(user_id)
     if not db_user:
         raise HTTPException(status_code=404, detail="User not found")
     
     return {
-        "user_id": db_user['id'],
-        "name": db_user['name'],
+        "user_id": db_user['auth0_sub'],
+        "name": db_user.get('fullName') or "",
         "email": db_user['email'],
-        "picture": None,
-        "created_at": db_user['created_at']
     }
 
 
@@ -351,19 +306,13 @@ async def create_anonymous_user():
         auth0_sub=anonymous_sub,
         name="Guest User",
         email=f"guest_{uuid.uuid4().hex[:8]}@anonymous.local",
-        picture=None,
-        phone=None,
-        age=None,
-        financial_goals=None,
         income_range=None,
         employment_status=None,
         marital_status=None,
-        dependents=None,
-        investment_experience=None,
-        risk_tolerance=None,
         education=None,
-        location=None,
-        username=None
+        location="Unknown, Unknown",
+        accepted_terms=True,
+        is_18_or_older=True,
     )
     
     if not user_id:
@@ -372,9 +321,8 @@ async def create_anonymous_user():
     user = db.get_user(user_id)
     return UserResponse(
         user_id=user_id,
-        name=user['name'],
+        name=user.get('fullName') or "",
         email=user['email'],
-        created_at=user['created_at']
     )
 
 
@@ -386,7 +334,7 @@ async def register_user(user_data: UserRegistration):
     if existing_user:
         raise HTTPException(status_code=400, detail="User with this email already exists")
     
-    user_id = db.create_user(user_data.name, user_data.email, user_data.phone)
+    user_id = db.create_user(user_data.name, user_data.email)
     if not user_id:
         raise HTTPException(status_code=500, detail="Failed to create user")
     
@@ -394,9 +342,8 @@ async def register_user(user_data: UserRegistration):
     
     return UserResponse(
         user_id=user_id,
-        name=user['name'],
+        name=user.get('fullName') or "",
         email=user['email'],
-        created_at=user['created_at']
     )
 
 
@@ -415,21 +362,19 @@ async def chat(
             auth0_sub = user_info.get("sub")
             db_user = db.get_user_by_auth0_sub(auth0_sub)
             if db_user:
-                user_id = db_user['id']
+                user_id = db_user["auth0_sub"]
         except HTTPException:
             # Token invalid, fall through to userId check
             pass
     
     # If no token or token invalid, use userId from request (fallback mode)
     if not user_id:
-        try:
-            user_id = int(request.user_id)
-            # Verify user exists
-            db_user = db.get_user(user_id)
-            if not db_user:
-                raise HTTPException(status_code=404, detail="User not found")
-        except (ValueError, TypeError):
+        user_id = request.user_id
+        if not user_id:
             raise HTTPException(status_code=400, detail="Invalid user_id")
+        db_user = db.get_user(user_id)
+        if not db_user:
+            raise HTTPException(status_code=404, detail="User not found")
     
     conversation_id = request.conversation_id or str(uuid.uuid4())
     
@@ -437,24 +382,13 @@ async def chat(
     conversation_history = db.get_conversation(user_id, conversation_id) or []
     
     # Get user metadata for personalized responses
-    user_metadata = None
-    if db_user:
-        user_metadata = {
-            'age': db_user.get('age'),
-            'income_range': db_user.get('income_range'),
-            'marital_status': db_user.get('marital_status'),
-            'employment_status': db_user.get('employment_status'),
-            'education': db_user.get('education'),
-            'location': db_user.get('location'),
-            'financial_goals': db_user.get('financial_goals'),
-            'risk_tolerance': db_user.get('risk_tolerance'),
-        }
+    user_metadata = build_user_metadata(db_user)
     
     # Add user message to history
     user_message = {
         "role": "user",
         "content": request.message,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow()
     }
     conversation_history.append(user_message)
     
@@ -488,7 +422,7 @@ async def chat(
     assistant_message = {
         "role": "assistant",
         "content": rag_response["response"],
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow()
     }
     conversation_history.append(assistant_message)
     
@@ -503,31 +437,20 @@ async def chat(
     )
 
 
-async def generate_streaming_response(user_id: int, conversation_id: str, message: str):
+async def generate_streaming_response(user_id: str, conversation_id: str, message: str):
     """Generator function for streaming responses"""
     # Get conversation history
     conversation_history = db.get_conversation(user_id, conversation_id) or []
     
     # Get user metadata for personalized responses
     db_user = db.get_user(user_id)
-    user_metadata = None
-    if db_user:
-        user_metadata = {
-            'age': db_user.get('age'),
-            'income_range': db_user.get('income_range'),
-            'marital_status': db_user.get('marital_status'),
-            'employment_status': db_user.get('employment_status'),
-            'education': db_user.get('education'),
-            'location': db_user.get('location'),
-            'financial_goals': db_user.get('financial_goals'),
-            'risk_tolerance': db_user.get('risk_tolerance'),
-        }
+    user_metadata = build_user_metadata(db_user)
     
     # Add user message to history
     user_message = {
         "role": "user",
         "content": message,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow()
     }
     conversation_history.append(user_message)
     
@@ -564,7 +487,7 @@ async def generate_streaming_response(user_id: int, conversation_id: str, messag
     assistant_message = {
         "role": "assistant",
         "content": full_response,
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": datetime.utcnow()
     }
     conversation_history.append(assistant_message)
     
@@ -590,21 +513,19 @@ async def chat_stream(
             auth0_sub = user_info.get("sub")
             db_user = db.get_user_by_auth0_sub(auth0_sub)
             if db_user:
-                user_id = db_user['id']
+                user_id = db_user["auth0_sub"]
         except HTTPException:
             # Token invalid, fall through to userId check
             pass
     
     # If no token or token invalid, use userId from request (fallback mode)
     if not user_id:
-        try:
-            user_id = int(request.user_id)
-            # Verify user exists
-            db_user = db.get_user(user_id)
-            if not db_user:
-                raise HTTPException(status_code=404, detail="User not found")
-        except (ValueError, TypeError):
+        user_id = request.user_id
+        if not user_id:
             raise HTTPException(status_code=400, detail="Invalid user_id")
+        db_user = db.get_user(user_id)
+        if not db_user:
+            raise HTTPException(status_code=404, detail="User not found")
     
     # Get user metadata if not already retrieved
     if not db_user:
@@ -629,15 +550,10 @@ async def get_conversation(user_id: str, conversation_id: str, user: Dict = Depe
     auth0_sub = user.get("sub")
     db_user = db.get_user_by_auth0_sub(auth0_sub)
     
-    if not db_user or str(db_user['id']) != user_id:
+    if not db_user or db_user["auth0_sub"] != user_id:
         raise HTTPException(status_code=403, detail="Access denied")
-    
-    try:
-        user_id_int = int(user_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid user_id")
-    
-    conversation = db.get_conversation(user_id_int, conversation_id)
+
+    conversation = db.get_conversation(user_id, conversation_id)
     if conversation is None:
         raise HTTPException(status_code=404, detail="Conversation not found")
     return {"conversation": conversation}
@@ -649,15 +565,10 @@ async def delete_conversation(user_id: str, conversation_id: str, user: Dict = D
     auth0_sub = user.get("sub")
     db_user = db.get_user_by_auth0_sub(auth0_sub)
     
-    if not db_user or str(db_user['id']) != user_id:
+    if not db_user or db_user["auth0_sub"] != user_id:
         raise HTTPException(status_code=403, detail="Access denied")
-    
-    try:
-        user_id_int = int(user_id)
-    except ValueError:
-        raise HTTPException(status_code=400, detail="Invalid user_id")
-    
-    db.clear_conversation(user_id_int, conversation_id)
+
+    db.clear_conversation(user_id, conversation_id)
     return {"message": "Conversation deleted"}
 
 
