@@ -1,4 +1,4 @@
-//RIGHT NOW THIS IS IMPLEMNETED WHERE IF I RESET FRONTEND WHILE IN REGISTRATION PAGE, IT STAYS IN REGISTRATION PAGE WITHOUT GOING BACK TO LOGIN PAGE. 
+//RIGHT NOW THIS IS IMPLEMNETED WHERE IF I RESET FRONTEND WHILE IN REGISTRATION PAGE, IT STAYS IN REGISTRATION PAGE WITHOUT GOING BACK TO LOGIN PAGE.
 
 
 // src/components/Login.js
@@ -21,12 +21,12 @@ export default function Login() {
           connection: "google-oauth2",                //KEEP commented for now - this is supposed to trigger the Google login screen, but it seems to be ignored by Auth0 for some reason. We can set up Google as the default connection in Auth0 dashboard instead
           prompt: "select_account", // This will prompt the user to select an account every time they log in, even if they are already authenticated. This is useful for testing the login flow repeatedly without having to log out from Auth0 or clear cookies. You can change this to "consent" or remove it entirely in production.
         },
-    });
-      } catch (err) {
-        console.error("loginWithRedirect failed:", err);
-        alert(`Login failed: ${err.message}`);
-      }
-    };
+      });
+    } catch (err) {
+      console.error("loginWithRedirect failed:", err);
+      alert(`Login failed: ${err.message}`);
+    }
+  };
 
   if (isLoading) return <div>Loading...</div>;
 

@@ -8,6 +8,22 @@ let authToken = null;
 const API_BASE = window.location.origin;
 // No frontend redirects - backend is standalone
 
+// Browser console: keep verbose logs on localhost only. On deployed hosts, silence console
+// (users who open DevTools won't see chat/debug noise). Add ?debug=1 to the URL to enable.
+(function () {
+    const h = window.location.hostname;
+    const isLocal = h === 'localhost' || h === '127.0.0.1';
+    const forceDebug = new URLSearchParams(window.location.search).get('debug') === '1';
+    if (!isLocal && !forceDebug) {
+        var noop = function () {};
+        console.log = noop;
+        console.debug = noop;
+        console.info = noop;
+        console.warn = noop;
+        console.error = noop;
+    }
+})();
+
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🚀 DOM Content Loaded');

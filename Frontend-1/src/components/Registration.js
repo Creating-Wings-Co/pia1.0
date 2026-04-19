@@ -11,11 +11,13 @@ import "./dummy2_register.css";
 import termsText from "../assets/terms.txt";
 import { validateTerms } from "../utils/validators";
 
-// gets backend URL from environment variable
-const API_BASE = process.env.REACT_APP_API_BASE_URL;
+const API_BASE = (
+  process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000"
+).replace(/\/$/, "");
 
-// gets chatbot URL from environment variable
-const CHATBOT_URL = process.env.REACT_APP_CHATBOT_URL;
+const CHATBOT_URL = (
+  process.env.REACT_APP_CHATBOT_URL || "http://127.0.0.1:8000"
+).replace(/\/$/, "");
 
 // Registration component class definition
 class Registration extends Component {

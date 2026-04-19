@@ -6,7 +6,6 @@ from typing import List, Dict
 from pathlib import Path
 import logging
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 

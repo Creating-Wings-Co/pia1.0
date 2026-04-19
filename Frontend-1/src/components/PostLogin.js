@@ -7,10 +7,14 @@ import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth0 } from "@auth0/auth0-react";
 
-// this where your frontend sneds API requests
-const API_BASE = process.env.REACT_APP_API_BASE_URL;
-// this is where your chatbot is hosted
-const CHATBOT_URL = process.env.REACT_APP_CHATBOT_URL;
+// Backend (FastAPI). Default matches local uvicorn.
+const API_BASE = (
+  process.env.REACT_APP_API_BASE_URL || "http://127.0.0.1:8000"
+).replace(/\/$/, "");
+// Static Pia UI served by the same backend in dev.
+const CHATBOT_URL = (
+  process.env.REACT_APP_CHATBOT_URL || "http://127.0.0.1:8000"
+).replace(/\/$/, "");
 
 // PostLogin component that runs after user logs in
 export default function PostLogin() {
