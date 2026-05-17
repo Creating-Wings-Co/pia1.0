@@ -571,3 +571,21 @@ body {
     }
 }
 
+.user-profile {
+    display: none;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+    margin-left: 20px;
+    position: relative;
+    cursor: pointer;
+}
+
+.user-profile:hover {
+    opacity: 0.9;
+}
+
+.user-profile:focus {
+    outline: 2px solid #50c4ed;
+    outline-offset: 4px;
+}

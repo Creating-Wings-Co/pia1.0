@@ -6,7 +6,11 @@ let authToken = null;
 
 // API base URL
 const API_BASE = window.location.origin;
+const FRONTEND_URL = "http://localhost:3000";
 // No frontend redirects - backend is standalone
+
+
+
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
@@ -368,6 +372,22 @@ function displayUserProfile(userData) {
     // Use class instead of inline style for better CSS control
     userProfile.style.display = 'flex';
     userProfile.classList.add('show');
+
+
+    userProfile.onclick = () => {
+        window.location.href = `${FRONTEND_URL}/edit-profile?userId=${encodeURIComponent(userData.user_id || '')}`;
+    };
+
+    userProfile.onkeydown = (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            window.location.href = `${FRONTEND_URL}/edit-profile?userId=${encodeURIComponent(userData.user_id || '')}`;
+        }
+    };
+
+
+
+    
     console.log('✅ User profile displayed');
 }
 
@@ -705,4 +725,3 @@ function scrollToBottom() {
     const messagesContainer = document.getElementById('chatMessages');
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
-

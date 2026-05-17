@@ -2,12 +2,27 @@
 // src/components/PostLogin.js
 // Responsible for handling the post-login logic after the user has authenticated with Auth0.
 
+//User is already back from Auth0
+//↓
+//PostLogin.js checks if Auth0 is loaded
+//↓
+//PostLogin.js checks if user is authenticated
+//↓
+//It gets the Auth0 access token
+//↓
+//It sends that token to your backend
+//↓
+//Backend verifies the token
+//↓
+//Backend sends back a status/response
+//↓
+//Frontend decides where to send the user next
 
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth0 } from "@auth0/auth0-react";
 
-// this where your frontend sneds API requests
+// this where your frontend sends API requests
 const API_BASE = process.env.REACT_APP_API_BASE_URL;
 // this is where your chatbot is hosted
 const CHATBOT_URL = process.env.REACT_APP_CHATBOT_URL;
@@ -33,10 +48,14 @@ export default function PostLogin() {
       // If user is authenticated, get access token and sync with backend,
       //  then check if user needs to complete registration or can go straight to chatbot
       try {
-        const token = await getAccessTokenSilently();
-        localStorage.setItem("authToken", token);
+        const token = await getAccessTokenSilently(); //gets Auth0 access token from SDK
+        
+        //Used to prove to your backend that the user is actually logged in.
+        //stores Auth0 access token in browser (local storage) until you remove it
+        localStorage.setItem("authToken", token);       //******************COULD BE A SECURITY RISK ************************* */
 
-        // Sync user info with backend to create/update user record
+        // sends request to backend
+        // backend verifies token if user is authenticated 
         const profileRes = await fetch(`${API_BASE}/api/user/me`, {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -57,7 +76,7 @@ export default function PostLogin() {
 
         // If profile fetch is successful, parse the profile data
         const profile = await profileRes.json();
-        localStorage.setItem("userId", String(profile.user_id));
+        localStorage.setItem("userId", String(profile.user_id));                                       //COULD BE SECURITY RISK
         window.location.href = `${CHATBOT_URL}/?userId=${encodeURIComponent(profile.user_id)}`;
       } catch (err) {
         console.error("Post-login failed:", err);

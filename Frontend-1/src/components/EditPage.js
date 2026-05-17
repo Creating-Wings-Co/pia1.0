@@ -1,24 +1,14 @@
-// Registration.js - User registration form component
-// Displays a form for users to complete their profile after logging in with Google
-// Collects additional info like location, marital status, income, education, employment
-// Validates inputs and submits data to backend to create/update user profile
-// If registration is successful, redirects user to chatbot page
-
 import React, { Component } from "react";
 import { Link } from "react-router-dom";
 import { withAuth0 } from "@auth0/auth0-react";
 import "./dummy2_register.css";
 import termsText from "../assets/terms.txt";
-import { validateTerms } from "../utils/validators";  //to validate that user has accepted terms and conditions
+import { validateTerms } from "../utils/validators";
 
-// gets backend URL from environment variable (ex: http://localhost:5000)
 const API_BASE = process.env.REACT_APP_API_BASE_URL;
-
-// where the user goes after registration.
 const CHATBOT_URL = process.env.REACT_APP_CHATBOT_URL;
 
-// Registration component class definition
-class Registration extends Component {
+class EditPage extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -37,44 +27,117 @@ class Registration extends Component {
       locationError: "",
       passwordError: "",
       termsError: "",
+      loading: true,
     };
   }
 
-  //runs when the page first loads 
-  //Checks --> Is the user logged in? Do we have user info?
   async componentDidMount() {
-    const { user, isAuthenticated } = this.props.auth0;
+    const { user, isAuthenticated, isLoading, getAccessTokenSilently } = this.props.auth0;
+
+    if (isLoading) {
+      return;
+    }
+
     if (!isAuthenticated || !user) {
       window.location.href = "/login";
       return;
     }
 
-    // Pre-fill email and full name from Auth0 user info
-    this.setState({
-      email: user.email || "",
-      fullName: user.name || "",
-    });
-
-    // Load terms and conditions text from local file and store in state to display in termsContent
-    // allows to easily update terms without changing code
     try {
       const text = await fetch(termsText).then((res) => res.text());
       this.setState({ termsContent: text });
     } catch (err) {
       console.error("Failed to load terms text:", err);
     }
+
+    try {
+      const token = await getAccessTokenSilently();
+
+      const response = await fetch(`${API_BASE}/api/user/me`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to load profile");
+      }
+
+      const profile = await response.json();
+
+      const incomeReverseMap = {
+        "$0-$9,999": "0-9999",
+        "$10,000-$24,999": "10000-24999",
+        "$25,000-$49,999": "25000-49000",
+        "$25,000-$49,000": "25000-49000",
+        "$50,000-$74,999": "50000-74999",
+        "$75,000-$99,999": "75000-99999",
+        "$100,000-$149,999": "100000-149999",
+        "$150,000+": "150000+",
+      };
+
+      const educationReverseMap = {
+        "Less than High School": "Less than High School",
+        "High School Diploma": "High School Diploma",
+        "Some College, No Degree": "Some College",
+        "Associate Degree": "Associate Degree",
+        "Bachelor's Degree": "Bachelors",
+        "Master's Degree": "Masters",
+        "Doctoral/Professional Degree": "Doctoral",
+        "Doctoral / Professional Degree": "Doctoral",
+      };
+
+      const employmentReverseMap = {
+        "Employed full-time": "Full-time",
+        "Employed part-time": "Part-time",
+        "Self-employed": "Self-employed",
+        Homemaker: "Homemaker",
+        "Looking for work": "Looking",
+        "Looking for work / Starting business": "Looking",
+        Student: "Student",
+      };
+
+      this.setState({
+        email: profile.email || user.email || "",
+        fullName: profile.name || user.name || "",
+        location: profile.location || "",
+        maritalStatus: profile.marital_status || "",
+        incomeRange: incomeReverseMap[profile.income_range] || "",
+        education: educationReverseMap[profile.education] || "",
+        employment: employmentReverseMap[profile.employment_status] || "",
+        acceptTerms: true,
+        is18OrOlder: true,
+        loading: false,
+      });
+    } catch (err) {
+      console.error("Failed to load profile:", err);
+      this.setState({
+        email: user.email || "",
+        fullName: user.name || "",
+        acceptTerms: true,
+        is18OrOlder: true,
+        loading: false,
+        passwordError: "Could not load profile. You can still update and save.",
+      });
+    }
   }
 
-  //handlers for form input changes, checkbox changes, and form submission.
-  handleChange = (e) => this.setState({ [e.target.name]: e.target.value });   //updates this.state.location when user types in their location
+  async componentDidUpdate(prevProps) {
+    const prevAuth0 = prevProps.auth0;
+    const currentAuth0 = this.props.auth0;
+
+    if (prevAuth0.isLoading && !currentAuth0.isLoading) {
+      await this.componentDidMount();
+    }
+  }
+
+  handleChange = (e) => this.setState({ [e.target.name]: e.target.value });
   handleCheckbox = (e) => this.setState({ acceptTerms: e.target.checked });
   handleAgeCheckbox = (e) => this.setState({ is18OrOlder: e.target.checked });
 
-  // When the registration form is submitted, validate inputs and submit data to backend to create/update user profile
-  handleRegister = async (e) => {
+  handleSave = async (e) => {
     e.preventDefault();
-    
-    // pulls all necessary data from state to be sent to backend
+
     const {
       email,
       fullName,
@@ -86,8 +149,7 @@ class Registration extends Component {
       employment,
       acceptTerms,
     } = this.state;
-  
-    // Clear previous error messages
+
     this.setState({
       passwordError: "",
       termsError: "",
@@ -95,27 +157,23 @@ class Registration extends Component {
       locationError: "",
     });
 
-
-//VALIDATION LOGIC
-    // Validate that user is 18 or older
     if (!is18OrOlder) {
-      this.setState({ ageError: "You must be 18 or older to register." });
+      this.setState({ ageError: "You must be 18 or older to continue." });
       return;
     }
-    // Validate that user has accepted terms and conditions
+
     const termsError = validateTerms(acceptTerms);
     if (termsError) {
       this.setState({ termsError });
       return;
     }
-    // Validate location format (e.g. "City, State")
+
     const locationPattern = /^[A-Za-z .'-]+,\s*[A-Za-z .'-]+$/;
     if (!locationPattern.test(location.trim())) {
       this.setState({ locationError: "Use format: City, State" });
       return;
     }
 
-// GET incomeMap, educationMap, and employmentMap to convert frontend values to backend values before sending to API
     const incomeMap = {
       "0-9999": "$0-$9,999",
       "10000-24999": "$10,000-$24,999",
@@ -145,9 +203,6 @@ class Registration extends Component {
       Student: "Student",
     };
 
-    //  sends registration data to backend API to create/update user profile
-    // If registration is successful, store the token and user ID in localStorage and redirect to chatbot page
-    // sends POST request to /api/auth/callback
     try {
       const { user, getAccessTokenSilently } = this.props.auth0;
       const token = await getAccessTokenSilently();
@@ -156,7 +211,7 @@ class Registration extends Component {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,  //includes Auth0 access token to tell backend who the user is 
+          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           sub: user.sub,
@@ -172,16 +227,14 @@ class Registration extends Component {
         }),
       });
 
-      // If the registration request fails, throw an error to be caught below
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("Registration failed:", response.status, errorText);
-        throw new Error("Registration failed");
+        console.error("Profile update failed:", response.status, errorText);
+        throw new Error("Profile update failed");
       }
 
-      // If registration is successful, store the token and user ID in localStorage and redirect to chatbot page
       const data = await response.json();
-      localStorage.setItem("authToken", token);   //****************************************COULD BE SECURITY RISK SINCE IT'S IN LOCAL STORAGE************************************
+      localStorage.setItem("authToken", token);
       localStorage.setItem("userId", String(data.user_id));
       window.location.href = `${CHATBOT_URL}/?userId=${encodeURIComponent(data.user_id)}`;
     } catch (err) {
@@ -192,39 +245,36 @@ class Registration extends Component {
     }
   };
 
-
-  // Opens the terms and conditions modal and prevents background scrolling
   openTerms = () => {
     this.setState({ showTerms: true });
     document.body.style.overflow = "hidden";
   };
 
-  // Closes the terms and conditions modal and restores background scrolling
   closeTerms = () => {
     this.setState({ showTerms: false });
     document.body.style.overflow = "auto";
   };
 
-  // When user clicks "I Agree" in the terms modal, set acceptTerms to true, close the modal, and restore background scrolling
   agreeAndClose = () => {
     this.setState({ acceptTerms: true, showTerms: false });
     document.body.style.overflow = "auto";
   };
 
-
-  // UI layout of the registration form with fields for 
-  // location, marital status, income, education, employment, and checkboxes for terms and age confirmation. 
   render() {
-    const { showTerms, termsContent } = this.state;
+    const { showTerms, termsContent, loading } = this.state;
+
+    if (loading) {
+      return <div className="register-container">Loading profile...</div>;
+    }
 
     return (
       <>
         <div className={`register-container ${showTerms ? "blurred" : ""}`}>
           <div className="register-form">
             <img src="/logo.png" alt="Logo" className="register-logo" />
-            <h2>Profile</h2>
+            <h2>Edit Profile</h2>
 
-            <form onSubmit={this.handleRegister}>
+            <form onSubmit={this.handleSave}>
               <label className="field-label">
                 Email <span className="required">*</span>
               </label>
@@ -361,11 +411,11 @@ class Registration extends Component {
                 <div className="inline-error">{this.state.ageError}</div>
               )}
 
-              <button type="submit">Register</button>
+              <button type="submit">Save Changes</button>
             </form>
 
             <div className="link-text">
-              Already have an account? <Link to="/">Login here</Link>
+              <Link to="/login">Back</Link>
             </div>
           </div>
         </div>
@@ -393,5 +443,4 @@ class Registration extends Component {
   }
 }
 
-export default withAuth0(Registration);
-
+export default withAuth0(EditPage);
