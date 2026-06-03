@@ -10,6 +10,12 @@ import { withAuth0 } from "@auth0/auth0-react";
 import "./dummy2_register.css";
 import termsText from "../assets/terms.txt";
 import { validateTerms } from "../utils/validators";  //to validate that user has accepted terms and conditions
+import {
+  formatApiError,
+  formatClientError,
+  getApiConfigError,
+  getAuth0AccessToken,
+} from "../utils/authApi";
 
 // gets backend URL from environment variable (ex: http://localhost:5000)
 const API_BASE = process.env.REACT_APP_API_BASE_URL;
@@ -148,9 +154,15 @@ class Registration extends Component {
     //  sends registration data to backend API to create/update user profile
     // If registration is successful, store the token and user ID in localStorage and redirect to chatbot page
     // sends POST request to /api/auth/callback
+    const configError = getApiConfigError(API_BASE, CHATBOT_URL);
+    if (configError) {
+      this.setState({ passwordError: configError });
+      return;
+    }
+
     try {
       const { user, getAccessTokenSilently } = this.props.auth0;
-      const token = await getAccessTokenSilently();
+      const token = await getAuth0AccessToken(getAccessTokenSilently);
 
       const response = await fetch(`${API_BASE}/api/auth/callback`, {
         method: "POST",
@@ -176,18 +188,27 @@ class Registration extends Component {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Registration failed:", response.status, errorText);
-        throw new Error("Registration failed");
+        this.setState({
+          passwordError: formatApiError(response.status, errorText),
+        });
+        return;
       }
 
       // If registration is successful, store the token and user ID in localStorage and redirect to chatbot page
       const data = await response.json();
-      localStorage.setItem("authToken", token);   //****************************************COULD BE SECURITY RISK SINCE IT'S IN LOCAL STORAGE************************************
+      if (!data.user_id) {
+        this.setState({
+          passwordError: "Registration succeeded but no user id was returned.",
+        });
+        return;
+      }
+      localStorage.setItem("authToken", token);
       localStorage.setItem("userId", String(data.user_id));
       window.location.href = `${CHATBOT_URL}/?userId=${encodeURIComponent(data.user_id)}`;
     } catch (err) {
-      console.error(err);
+      console.error("Registration error:", err);
       this.setState({
-        passwordError: "Something went wrong. Please try again.",
+        passwordError: formatClientError(err),
       });
     }
   };
