@@ -4,6 +4,12 @@ import { withAuth0 } from "@auth0/auth0-react";
 import "./dummy2_register.css";
 import termsText from "../assets/terms.txt";
 import { validateTerms } from "../utils/validators";
+import {
+  formatApiError,
+  formatClientError,
+  getApiConfigError,
+  getAuth0AccessToken,
+} from "../utils/authApi";
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL;
 const CHATBOT_URL = process.env.REACT_APP_CHATBOT_URL;
@@ -51,7 +57,7 @@ class EditPage extends Component {
     }
 
     try {
-      const token = await getAccessTokenSilently();
+      const token = await getAuth0AccessToken(getAccessTokenSilently);
 
       const response = await fetch(`${API_BASE}/api/user/me`, {
         headers: {
@@ -203,9 +209,15 @@ class EditPage extends Component {
       Student: "Student",
     };
 
+    const configError = getApiConfigError(API_BASE, CHATBOT_URL);
+    if (configError) {
+      this.setState({ passwordError: configError });
+      return;
+    }
+
     try {
       const { user, getAccessTokenSilently } = this.props.auth0;
-      const token = await getAccessTokenSilently();
+      const token = await getAuth0AccessToken(getAccessTokenSilently);
 
       const response = await fetch(`${API_BASE}/api/auth/callback`, {
         method: "POST",
@@ -230,17 +242,26 @@ class EditPage extends Component {
       if (!response.ok) {
         const errorText = await response.text();
         console.error("Profile update failed:", response.status, errorText);
-        throw new Error("Profile update failed");
+        this.setState({
+          passwordError: formatApiError(response.status, errorText),
+        });
+        return;
       }
 
       const data = await response.json();
+      if (!data.user_id) {
+        this.setState({
+          passwordError: "Save succeeded but no user id was returned.",
+        });
+        return;
+      }
       localStorage.setItem("authToken", token);
       localStorage.setItem("userId", String(data.user_id));
       window.location.href = `${CHATBOT_URL}/?userId=${encodeURIComponent(data.user_id)}`;
     } catch (err) {
-      console.error(err);
+      console.error("Profile save error:", err);
       this.setState({
-        passwordError: "Something went wrong. Please try again.",
+        passwordError: formatClientError(err),
       });
     }
   };

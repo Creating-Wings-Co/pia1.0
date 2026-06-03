@@ -21,6 +21,7 @@
 import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth0 } from "@auth0/auth0-react";
+import { getAuth0AccessToken } from "../utils/authApi";
 
 // this where your frontend sends API requests
 const API_BASE = process.env.REACT_APP_API_BASE_URL;
@@ -48,7 +49,7 @@ export default function PostLogin() {
       // If user is authenticated, get access token and sync with backend,
       //  then check if user needs to complete registration or can go straight to chatbot
       try {
-        const token = await getAccessTokenSilently(); //gets Auth0 access token from SDK
+        const token = await getAuth0AccessToken(getAccessTokenSilently);
         
         //Used to prove to your backend that the user is actually logged in.
         //stores Auth0 access token in browser (local storage) until you remove it
