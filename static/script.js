@@ -6,23 +6,11 @@ let authToken = null;
 
 // API base URL
 const API_BASE = window.location.origin;
+const FRONTEND_URL = "http://localhost:3000";
 // No frontend redirects - backend is standalone
 
-// Browser console: keep verbose logs on localhost only. On deployed hosts, silence console
-// (users who open DevTools won't see chat/debug noise). Add ?debug=1 to the URL to enable.
-(function () {
-    const h = window.location.hostname;
-    const isLocal = h === 'localhost' || h === '127.0.0.1';
-    const forceDebug = new URLSearchParams(window.location.search).get('debug') === '1';
-    if (!isLocal && !forceDebug) {
-        var noop = function () {};
-        console.log = noop;
-        console.debug = noop;
-        console.info = noop;
-        console.warn = noop;
-        console.error = noop;
-    }
-})();
+
+
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', () => {
@@ -384,6 +372,22 @@ function displayUserProfile(userData) {
     // Use class instead of inline style for better CSS control
     userProfile.style.display = 'flex';
     userProfile.classList.add('show');
+
+
+    userProfile.onclick = () => {
+        window.location.href = `${FRONTEND_URL}/edit-profile?userId=${encodeURIComponent(userData.user_id || '')}`;
+    };
+
+    userProfile.onkeydown = (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            window.location.href = `${FRONTEND_URL}/edit-profile?userId=${encodeURIComponent(userData.user_id || '')}`;
+        }
+    };
+
+
+
+    
     console.log('✅ User profile displayed');
 }
 
@@ -721,4 +725,3 @@ function scrollToBottom() {
     const messagesContainer = document.getElementById('chatMessages');
     messagesContainer.scrollTop = messagesContainer.scrollHeight;
 }
-

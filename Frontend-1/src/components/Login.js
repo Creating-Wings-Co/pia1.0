@@ -1,4 +1,6 @@
-//RIGHT NOW THIS IS IMPLEMNETED WHERE IF I RESET FRONTEND WHILE IN REGISTRATION PAGE, IT STAYS IN REGISTRATION PAGE WITHOUT GOING BACK TO LOGIN PAGE.
+//This file is your Login page component. It shows a login screen with a Continue with Google button, 
+// and when the user clicks it, the app sends them to Auth0 for login.
+
 
 
 // src/components/Login.js
@@ -7,29 +9,40 @@
 // when clicked, redirects to Auth0 login page for Google login
 
 
+
+
+
 import React from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import "./dummy1_login.css";
 
+//creates and exports a React component called Login
 export default function Login() {
-  const { loginWithRedirect, isLoading, error } = useAuth0();
+  //can do this because App is wrapped around <Auth0Provider>
+  const { loginWithRedirect, isLoading, error } = useAuth0(); // Get Auth0 functions
 
+  
+  //login button function 
   const handleLogin = async () => {
     try {
       await loginWithRedirect({
         authorizationParams: {
-          connection: "google-oauth2",                //KEEP commented for now - this is supposed to trigger the Google login screen, but it seems to be ignored by Auth0 for some reason. We can set up Google as the default connection in Auth0 dashboard instead
-          prompt: "select_account", // This will prompt the user to select an account every time they log in, even if they are already authenticated. This is useful for testing the login flow repeatedly without having to log out from Auth0 or clear cookies. You can change this to "consent" or remove it entirely in production.
+          connection: "google-oauth2",    //tells Auth0 to use Google login directly 
+          prompt: "select_account", // This will prompt the user to select an account every time they log in
         },
-      });
-    } catch (err) {
-      console.error("loginWithRedirect failed:", err);
-      alert(`Login failed: ${err.message}`);
-    }
-  };
+    });
+      } catch (err) {   //error handling for login failure
+        console.error("loginWithRedirect failed:", err);
+        alert(`Login failed: ${err.message}`);
+      }
+    };
 
+
+
+  //loading page shows while Auth0 is initializing 
   if (isLoading) return <div>Loading...</div>;
 
+  //error page shows if there is an error with Auth0
   if (error) {
     return <div>Auth0 error: {error.message}</div>;
   }

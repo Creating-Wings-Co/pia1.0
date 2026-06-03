@@ -7,6 +7,8 @@ import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import Login from "./components/Login";
 import Registration from "./components/Registration";
 import PostLogin from "./components/PostLogin";
+import EditPage from "./components/EditPage";
+
 
 function App() {
   return (
@@ -16,9 +18,11 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<Registration />} />
         <Route path="/post-login" element={<PostLogin />} />
+        <Route path="/edit-profile" element={<EditPage />} />
       </Routes>
     </Router>
   );
 }
 
-export default App;
+export default App;   //exports App so it is available to other profiles
+
