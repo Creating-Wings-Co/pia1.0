@@ -1,5 +1,5 @@
 Creating Wings Co. – Terms & Conditions for Registration & Login
-Effective Date: [Insert Date]
+Effective Date: March 2025
 Welcome to Creating Wings Co. (“we,” “our,” “us”). These Terms & Conditions (“Terms”) govern your access to and use of our AI chatbot platform, website, services, mobile applications, and any tools or features we provide (collectively, the “Services”).
 By creating an account, logging in, or accessing the Services, you agree to be legally bound by these Terms.
 If you do not agree, please do not use the Services.
@@ -86,6 +86,6 @@ Continued use after changes means you accept the revised Terms.
 These Terms are governed by the laws of the State of Connecticut, USA.
  
 14. Contact Information
-For questions or concerns:
+For questions or concerns:)
 📧 info@creatingwings.org
 🌐 www.creatingwings.org",
