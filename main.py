@@ -1,12 +1,13 @@
 from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, StreamingResponse, RedirectResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional, Dict
 import uuid
 import logging
 import json
+import os
 from datetime import datetime
 from urllib.parse import quote
 import sys
@@ -144,15 +145,26 @@ async def get_user_optional_token(
 # API Endpoints
 @app.get("/")
 async def root():
-    """Serve the frontend"""
-    import os
+    """Serve the chat UI with runtime config injected from environment."""
     html_path = os.path.join(os.path.dirname(__file__), "static", "index.html")
-    response = FileResponse(html_path)
-    # Add cache control headers to prevent caching of HTML
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
-    response.headers["Pragma"] = "no-cache"
-    response.headers["Expires"] = "0"
-    return response
+    with open(html_path, "r", encoding="utf-8") as f:
+        html = f.read()
+
+    config_script = (
+        "<script>window.__PIA_CONFIG__="
+        + json.dumps({"frontendUrl": Config.FRONTEND_URL})
+        + ";</script>"
+    )
+    html = html.replace("</head>", f"{config_script}\n</head>")
+
+    return HTMLResponse(
+        html,
+        headers={
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        },
+    )
 
 # Mount static files AFTER the root route
 app.mount("/static", StaticFiles(directory="static"), name="static")

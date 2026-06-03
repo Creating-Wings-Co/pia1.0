@@ -375,6 +375,8 @@ Generate questions now:"""
                 user_parts.append(f"Employment: {user_metadata['employment_status']}")
             if user_metadata.get('education'):
                 user_parts.append(f"Education: {user_metadata['education']}")
+            if user_metadata.get('location'):
+                user_parts.append(f"Location: {user_metadata['location']}")
             if user_parts:
                 user_context = f"\n\nUser Profile:\n" + "\n".join(f"- {part}" for part in user_parts)
         

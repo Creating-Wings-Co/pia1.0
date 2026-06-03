@@ -4,10 +4,12 @@ let conversationId = null;
 let isWaitingForResponse = false;
 let authToken = null;
 
-// API base URL
+// API base URL (same host as chat UI in production)
 const API_BASE = window.location.origin;
-const FRONTEND_URL = "http://localhost:3000";
-// No frontend redirects - backend is standalone
+// React SPA URL — injected by backend from FRONTEND_URL env; localhost fallback for dev
+const FRONTEND_URL = (
+    window.__PIA_CONFIG__ && window.__PIA_CONFIG__.frontendUrl
+) || "http://localhost:3000";
 
 
 
@@ -144,10 +146,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Backend requires authentication - redirect unauthenticated users to frontend
 function redirectToFrontend() {
-    // TODO: Replace 'your-app-name.vercel.app' with your actual Vercel frontend URL
-    // Example: 'https://creating-wings-frontend.vercel.app'
-    const frontendUrl = "http://localhost:3000";
-    
+    const frontendUrl = FRONTEND_URL;
+
     console.log('🔐 Authentication required - redirecting to frontend:', frontendUrl);
     
     // Show message to user

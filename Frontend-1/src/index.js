@@ -10,6 +10,10 @@ import reportWebVitals from "./reportWebVitals";  //comes with create-react-app
 // Finds the root element in the HTML and creates a React root
 const root = ReactDOM.createRoot(document.getElementById("root"));
 
+const auth0RedirectUri =
+  process.env.REACT_APP_AUTH0_REDIRECT_URI ||
+  `${window.location.origin}/post-login`;
+
 // Renders the App component inside strict mode 
 // wrapped in Auth0Provider so the entire app can access Auth0 features and context
 //includes domain, clientId, and authorizationParams for Auth0 configuration
@@ -19,7 +23,7 @@ root.render(
       domain={process.env.REACT_APP_AUTH0_DOMAIN}   
       clientId={process.env.REACT_APP_AUTH0_CLIENT_ID}
       authorizationParams={{
-        redirect_uri: `${window.location.origin}/post-login`,     //tells Auth0 to redirect to /post-login after login 
+        redirect_uri: auth0RedirectUri,
         audience: process.env.REACT_APP_AUTH0_AUDIENCE,
       }}
       cacheLocation="localstorage"  // persist tokens in localStorage to survive page refreshes

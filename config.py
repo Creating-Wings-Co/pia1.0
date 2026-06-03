@@ -65,6 +65,11 @@ class Config:
     AUTH0_CLIENT_ID = os.getenv("AUTH0_CLIENT_ID", "").strip()
     AUTH0_CLIENT_SECRET = os.getenv("AUTH0_CLIENT_SECRET", "").strip()
     AUTH0_NEXTJS_URL = os.getenv("AUTH0_NEXTJS_URL", "http://localhost:3000").strip()
+    # React SPA URL (login/register). Used by chat UI for edit-profile and auth redirects.
+    FRONTEND_URL = (
+        os.getenv("FRONTEND_URL", "").strip()
+        or AUTH0_NEXTJS_URL
+    ).rstrip("/")
 
     @classmethod
     def is_production(cls) -> bool:

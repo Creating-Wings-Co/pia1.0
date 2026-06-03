@@ -108,10 +108,10 @@ class Registration extends Component {
       this.setState({ termsError });
       return;
     }
-    // Validate location format (e.g. "City, State")
+    // Validate location format (e.g. "State, Country")
     const locationPattern = /^[A-Za-z .'-]+,\s*[A-Za-z .'-]+$/;
     if (!locationPattern.test(location.trim())) {
-      this.setState({ locationError: "Use format: City, State" });
+      this.setState({ locationError: "Use format: State, Country" });
       return;
     }
 
@@ -261,9 +261,9 @@ class Registration extends Component {
                 type="text"
                 name="location"
                 required
-                placeholder="City, State"
+                placeholder="State, Country"
                 pattern="^[A-Za-z .'-]+,\s*[A-Za-z .'-]+$"
-                title="Use format: City, State"
+                title="Use format: State, Country"
                 value={this.state.location}
                 onChange={this.handleChange}
               />
