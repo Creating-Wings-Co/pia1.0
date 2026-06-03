@@ -221,6 +221,17 @@ class Database:
             logger.error("Error cleaning up conversations: %s", type(e).__name__)
             return 0
 
+    def _find_user_for_auth0(self, auth0_sub: str, email: str) -> Optional[Dict]:
+        """Match by Auth0 subject first, then email (case-insensitive)."""
+        existing = self.users.find_one({"auth0_sub": auth0_sub})
+        if existing:
+            return existing
+        if not email:
+            return None
+        return self.users.find_one(
+            {"email": {"$regex": f"^{re.escape(email.strip())}$", "$options": "i"}}
+        )
+
     def create_or_update_user_from_auth0(
         self,
         auth0_sub: str,
@@ -234,37 +245,71 @@ class Database:
         accepted_terms: bool = True,
         is_18_or_older: bool = True,
     ) -> Optional[str]:
+        updates = {
+            "auth0_sub": auth0_sub,
+            "email": email.strip() if email else email,
+            "fullName": name or "",
+            "location": location or "Unknown, Unknown",
+            "acceptedTerms": bool(accepted_terms),
+            "is18OrOlder": bool(is_18_or_older),
+        }
+        # Omit null optional fields — Atlas JSON Schema often rejects explicit nulls
+        if marital_status is not None:
+            updates["maritalStatus"] = marital_status
+        if income_range is not None:
+            updates["householdIncomeRange"] = income_range
+        if education is not None:
+            updates["educationLevel"] = education
+        if employment_status is not None:
+            updates["employmentStatus"] = employment_status
+
+        def _upsert_existing(existing: Dict) -> Optional[str]:
+            self.users.update_one({"_id": existing["_id"]}, {"$set": updates})
+            return auth0_sub
+
         try:
-            updates = {
-                "auth0_sub": auth0_sub,
-                "email": email,
-                "fullName": name,
-                "location": location or "Unknown, Unknown",
-                "maritalStatus": marital_status,
-                "householdIncomeRange": income_range,
-                "educationLevel": education,
-                "employmentStatus": employment_status,
-                "acceptedTerms": bool(accepted_terms),
-                "is18OrOlder": bool(is_18_or_older),
-            }
-
-            existing = self.users.find_one({"auth0_sub": auth0_sub})
+            existing = self._find_user_for_auth0(auth0_sub, email)
             if existing:
-                self.users.update_one({"auth0_sub": auth0_sub}, {"$set": updates})
-                return auth0_sub
-
-            email_existing = self.users.find_one({"email": email})
-            if email_existing:
-                self.users.update_one({"email": email}, {"$set": updates})
-                return auth0_sub
+                return _upsert_existing(existing)
 
             self.users.insert_one(updates)
             return auth0_sub
         except DuplicateKeyError:
-            logger.error("Auth0 user upsert failed: duplicate key")
+            logger.warning(
+                "Auth0 user insert duplicate key; retrying upsert for sub=%s email=%s",
+                auth0_sub,
+                email,
+            )
+            try:
+                existing = self._find_user_for_auth0(auth0_sub, email)
+                if existing:
+                    return _upsert_existing(existing)
+                # Last resort: another doc may own this email or auth0_sub
+                existing = self.users.find_one(
+                    {"$or": [{"auth0_sub": auth0_sub}, {"email": updates["email"]}]}
+                )
+                if existing:
+                    return _upsert_existing(existing)
+            except Exception as retry_err:
+                logger.error(
+                    "Auth0 user upsert retry failed: %s: %s",
+                    type(retry_err).__name__,
+                    retry_err,
+                )
+            return None
+        except OperationFailure as e:
+            logger.error(
+                "Auth0 user upsert MongoDB operation failed: code=%s details=%s",
+                getattr(e, "code", None),
+                getattr(e, "details", None),
+            )
             return None
         except Exception as e:
-            logger.error("Error creating/updating user from Auth0: %s", type(e).__name__)
+            logger.error(
+                "Error creating/updating user from Auth0: %s: %s",
+                type(e).__name__,
+                e,
+            )
             return None
 
     def get_user_by_auth0_sub(self, auth0_sub: str) -> Optional[Dict]:

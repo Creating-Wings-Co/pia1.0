@@ -262,16 +262,32 @@ async def auth_callback(user_info: Auth0UserInfo, authorization: Optional[str] =
     )
     
     if not user_id:
-        raise HTTPException(status_code=500, detail="Failed to create/update user")
-    
+        logger.error(
+            "Auth callback (POST): database upsert failed for auth0_sub=%s email=%s",
+            auth0_sub,
+            email,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail=(
+                "Failed to save profile to database. "
+                "Often caused by a duplicate email, MongoDB connection, or Atlas collection validation. "
+                "Check EC2 server logs for details."
+            ),
+        )
+
     user = db.get_user(user_id)
+    if not user:
+        logger.error("Auth callback (POST): user missing after upsert auth0_sub=%s", user_id)
+        raise HTTPException(status_code=500, detail="User saved but could not be loaded")
+
     if not Config.is_production():
         logger.info("User retrieved auth0_sub=%s", user_id)
-    
+
     return UserResponse(
         user_id=user_id,
-        name=user.get('fullName') or "",
-        email=user['email'],
+        name=user.get("fullName") or "",
+        email=user["email"],
     )
 
 @app.get("/api/user/me")
