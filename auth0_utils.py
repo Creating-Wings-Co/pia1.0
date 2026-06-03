@@ -27,19 +27,29 @@ from config import Config   # stores auth0 settings like AUTH0_DOMAIN, AUTH0_AUD
 
 logger = logging.getLogger(__name__)    # set up logging for this module
 
+
+def _require_auth0_config():
+    if not Config.AUTH0_DOMAIN:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Auth0 is not configured (set AUTH0_DOMAIN in .env). For local testing without login, use POST /api/user/anonymous and /api/chat with user_id.",
+        )
+
+
 # Cache JWKS (JSON Web Key Set) for 1 hour
 @lru_cache(maxsize=1)
 
 # Cache the JWKS for 1 hour to avoid fetching it on every request
 def get_jwks():
     """Fetch Auth0's public keys for token verification"""
+    _require_auth0_config()
     jwks_url = f"https://{Config.AUTH0_DOMAIN}/.well-known/jwks.json"
     try:
         response = requests.get(jwks_url, timeout=10)
         response.raise_for_status()
         return response.json()
     except Exception as e:
-        logger.error(f"Error fetching JWKS: {e}")
+        logger.error("Error fetching JWKS: %s", type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Unable to verify authentication"
@@ -52,7 +62,7 @@ def get_rsa_key(token: str) -> Dict:
     try:
         unverified_header = jwt.get_unverified_header(token)
     except Exception as e:
-        logger.error(f"Error decoding token header: {e}")
+        logger.error("Error decoding token header: %s", type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token format"
@@ -92,6 +102,7 @@ def verify_token(token: str) -> Optional[Dict]:
     Raises:
         HTTPException if token is invalid
     """
+    _require_auth0_config()
     try:
         # Remove 'Bearer ' prefix if present
         if token.startswith("Bearer "):
@@ -126,15 +137,26 @@ def verify_token(token: str) -> Optional[Dict]:
         
         # Verify and decode token
         issuer = f"https://{Config.AUTH0_DOMAIN}/"
-        payload = jwt.decode(
-            token,
-            public_key,
-            algorithms=["RS256"],
-            audience=Config.AUTH0_AUDIENCE,
-            issuer=issuer,
-            options={"verify_signature": True}
-        )
-        
+        decode_opts = {"verify_signature": True, "verify_iss": True}
+        if Config.AUTH0_AUDIENCE:
+            payload = jwt.decode(
+                token,
+                public_key,
+                algorithms=["RS256"],
+                audience=Config.AUTH0_AUDIENCE,
+                issuer=issuer,
+                options=decode_opts,
+            )
+        else:
+            decode_opts["verify_aud"] = False
+            payload = jwt.decode(
+                token,
+                public_key,
+                algorithms=["RS256"],
+                issuer=issuer,
+                options=decode_opts,
+            )
+
         return payload
         
     except ExpiredSignatureError:
@@ -142,13 +164,13 @@ def verify_token(token: str) -> Optional[Dict]:
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token has expired"
         )
-    except (InvalidAudienceError, InvalidIssuerError) as e:
+    except (InvalidAudienceError, InvalidIssuerError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Invalid token claims: {str(e)}"
+            detail="Invalid token claims (check AUTH0_AUDIENCE matches your API and SPA)",
         )
     except Exception as e:
-        logger.error(f"Token verification error: {e}")
+        logger.error("Token verification error: %s", type(e).__name__)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid token"

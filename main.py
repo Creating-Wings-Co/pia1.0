@@ -5,26 +5,29 @@ from fastapi.responses import FileResponse, StreamingResponse, RedirectResponse
 from pydantic import BaseModel, EmailStr
 from typing import List, Optional, Dict
 import uuid
-from datetime import datetime
 import logging
 import json
+from datetime import datetime
 from urllib.parse import quote
+import sys
 
 from config import Config
+
+try:
+    Config.validate(for_chat_api=True)
+except ValueError as e:
+    sys.stderr.write(f"Configuration error: {e}\n")
+    raise SystemExit(1)
+
+Config.configure_logging()
+
 from database import Database
 from vector_store import VectorStore
 from rag_system import RAGSystem
 from web_search import WebSearchService
 from auth0_utils import get_current_user, verify_token
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-# Validate configuration
-try:
-    Config.validate()
-except ValueError as e:
-    logger.error(f"Configuration error: {e}")
 
 # Initialize FastAPI app
 app = FastAPI(title="Women's Finance Chatbot", version="1.0.0")
@@ -113,10 +116,9 @@ async def get_user_from_token(authorization: Optional[str] = Header(None)):
     if not authorization:
         raise HTTPException(
             status_code=401,
-            detail="Authorization header required"
+            detail="Authorization header required",
         )
-    user_info = get_current_user(authorization)
-    return user_info
+    return get_current_user(authorization)
 
 # Dependency that allows optional token (for fallback when no token available)
 async def get_user_optional_token(
@@ -182,7 +184,8 @@ async def auth_callback_get(
         raise HTTPException(status_code=400, detail="Missing required user information")
 
     # Create or update user
-    logger.info(f"Creating/updating user via GET - sub: {sub}, name: {name}, email: {email}")
+    if not Config.is_production():
+        logger.info("Auth callback (GET): user upsert for sub=%s", sub)
     user_id = db.create_or_update_user_from_auth0(
         auth0_sub=sub,
         name=name,
@@ -231,7 +234,8 @@ async def auth_callback(user_info: Auth0UserInfo, authorization: Optional[str] =
         email = user_info.email
     
     # Create or update user in database.
-    logger.info(f"Creating/updating user - auth0_sub: {auth0_sub}, name: {name}, email: {email}")
+    if not Config.is_production():
+        logger.info("Auth callback (POST): user upsert for auth0_sub=%s", auth0_sub)
     user_id = db.create_or_update_user_from_auth0(
         auth0_sub=auth0_sub,
         name=name,
@@ -249,7 +253,8 @@ async def auth_callback(user_info: Auth0UserInfo, authorization: Optional[str] =
         raise HTTPException(status_code=500, detail="Failed to create/update user")
     
     user = db.get_user(user_id)
-    logger.info(f"User retrieved - auth0_sub: {user_id}, name: {user.get('fullName')}, email: {user.get('email')}")
+    if not Config.is_production():
+        logger.info("User retrieved auth0_sub=%s", user_id)
     
     return UserResponse(
         user_id=user_id,
@@ -400,7 +405,7 @@ async def chat(
     )
     
     # If web search is needed
-    if rag_response.get("requires_web_search"):
+    if rag_response.get("requires_web_search") and not Config.DISABLE_CONSOLE_LOGS:
         logger.info("Performing web search for additional information")
         search_results = web_search_service.search(request.message)
         if search_results:
@@ -416,7 +421,7 @@ async def chat(
     # Handle escalation
     if rag_response.get("escalate"):
         escalation_type = rag_response.get("escalation_type", "SENSITIVE")
-        logger.warning(f"⚠️ ESCALATION: {escalation_type} - User {user_id}: {request.message}")
+        logger.warning("Escalation flagged: type=%s", escalation_type)
     
     # Add assistant response to history
     assistant_message = {
@@ -459,7 +464,8 @@ async def generate_streaming_response(user_id: str, conversation_id: str, messag
     
     full_response = ""
     escalation_detected = False
-    
+    stream_error = False
+
     # Generate streaming response with user metadata
     try:
         for chunk in rag_system.generate_response_stream(
@@ -468,33 +474,28 @@ async def generate_streaming_response(user_id: str, conversation_id: str, messag
             user_metadata=user_metadata
         ):
             full_response += chunk
-            # Send chunk as JSON
             yield f"data: {json.dumps({'chunk': chunk, 'done': False})}\n\n"
-        
-        # Check if escalation happened
         escalation_detected = is_sensitive
-        
-        # If web search might be needed, we can add it here in future
-        # For now, just send the complete response
-        
     except Exception as e:
-        logger.error(f"Error in streaming response: {e}")
-        error_chunk = "I apologize, but I encountered an error. Please try again."
-        full_response = error_chunk
-        yield f"data: {json.dumps({'chunk': error_chunk, 'done': False, 'error': True})}\n\n"
-    
-    # Add assistant response to history
+        logger.error("Error in streaming response: %s", type(e).__name__)
+        stream_error = True
+        full_response = (
+            "I apologize, but I encountered an error. Please try again."
+        )
+
+    # Persist before any further yields so we don't skip save if the client stops
+    # reading after an error event (previously yield-in-exit suspended here).
     assistant_message = {
         "role": "assistant",
         "content": full_response,
         "timestamp": datetime.utcnow()
     }
     conversation_history.append(assistant_message)
-    
-    # Store updated conversation
     db.store_conversation(user_id, conversation_id, conversation_history)
-    
-    # Send final message with metadata
+
+    if stream_error:
+        yield f"data: {json.dumps({'chunk': full_response, 'done': False, 'error': True})}\n\n"
+
     yield f"data: {json.dumps({'done': True, 'conversation_id': conversation_id, 'escalate': escalation_detected, 'escalation_type': sensitivity_type if escalation_detected else None})}\n\n"
 
 
@@ -577,8 +578,11 @@ async def health_check():
     """Health check endpoint"""
     return {
         "status": "healthy",
+        "environment": Config.ENVIRONMENT,
+        "auth0_configured": Config.auth0_is_configured(),
+        "auth0_required_at_startup": not Config.skip_auth0_env_requirement(),
         "database": "connected",
-        "vector_store": "ready"
+        "vector_store": "ready",
     }
 
 

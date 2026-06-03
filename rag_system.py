@@ -4,7 +4,8 @@ import logging
 from datetime import datetime
 import re
 
-logging.basicConfig(level=logging.INFO)
+from config import Config
+
 logger = logging.getLogger(__name__)
 
 
@@ -285,7 +286,7 @@ Generate questions now:"""
             if questions and len(questions) > 10:
                 return questions
         except Exception as e:
-            logger.error(f"Error generating follow-up questions: {e}")
+            logger.error("Error generating follow-up questions: %s", type(e).__name__)
         
         return None
     
@@ -353,7 +354,8 @@ Generate questions now:"""
         # Build conversation history context
         history_context = ""
         if conversation_history:
-            recent_history = conversation_history[-6:]  # Last 6 messages for better context
+            cap = max(1, Config.CONVERSATION_MAX_MESSAGES)
+            recent_history = conversation_history[-cap:]
             history_context = "\n".join([
                 f"{'User' if msg['role'] == 'user' else 'Assistant'}: {msg['content']}"
                 for msg in recent_history
@@ -424,7 +426,7 @@ Now provide your response:"""
                     yield chunk.text
                     
         except Exception as e:
-            logger.error(f"Error generating streaming response: {e}")
+            logger.error("Error generating streaming response: %s", type(e).__name__)
             error_msg = "I apologize, but I encountered an error while processing your question. Please try again or rephrase your question."
             for char in error_msg:
                 yield char

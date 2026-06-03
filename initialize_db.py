@@ -7,7 +7,6 @@ from config import Config
 from document_processor import DocumentProcessor
 from vector_store import VectorStore
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -51,10 +50,14 @@ def initialize_vector_db():
 
 
 if __name__ == "__main__":
+    import logging as _logging
+
+    _logging.disable(_logging.NOTSET)
+    _logging.basicConfig(level=_logging.INFO)
     try:
-        Config.validate()
+        Config.validate(for_chat_api=False)
         initialize_vector_db()
     except Exception as e:
-        logger.error(f"Error initializing vector database: {e}")
+        logger.error("Error initializing vector database: %s", type(e).__name__)
         raise
 

@@ -3,7 +3,6 @@ from bs4 import BeautifulSoup
 from typing import List, Dict
 import logging
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
