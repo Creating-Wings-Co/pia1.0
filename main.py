@@ -176,6 +176,12 @@ async def health_check():
     return {"status": "healthy", "service": "chatbot-api"}
 
 
+@app.get("/api/config")
+async def public_config():
+    """Public runtime config for the chat UI (edit-profile link, auth redirects)."""
+    return {"frontendUrl": Config.FRONTEND_URL}
+
+
 @app.get("/api/auth/callback")
 async def auth_callback_get(
     sub: Optional[str] = None,

@@ -6,17 +6,55 @@ let authToken = null;
 
 // API base URL (same host as chat UI in production)
 const API_BASE = window.location.origin;
-// React SPA URL — injected by backend from FRONTEND_URL env; localhost fallback for dev
-const FRONTEND_URL = (
-    window.__PIA_CONFIG__ && window.__PIA_CONFIG__.frontendUrl
-) || "http://localhost:3000";
+
+// React SPA (login / edit profile) — resolved at startup from env, /api/config, or host fallback
+let FRONTEND_URL = null;
+
+const HOST_FRONTEND_FALLBACK = {
+    "chat.creatingwings.org": "https://pia1-0.vercel.app",
+};
+
+async function initFrontendUrl() {
+    if (window.__PIA_CONFIG__ && window.__PIA_CONFIG__.frontendUrl) {
+        FRONTEND_URL = window.__PIA_CONFIG__.frontendUrl;
+        return FRONTEND_URL;
+    }
+    try {
+        const res = await fetch(`${API_BASE}/api/config`);
+        if (res.ok) {
+            const data = await res.json();
+            if (data.frontendUrl) {
+                FRONTEND_URL = data.frontendUrl.replace(/\/$/, "");
+                return FRONTEND_URL;
+            }
+        }
+    } catch (err) {
+        console.warn("Could not load /api/config:", err);
+    }
+    FRONTEND_URL =
+        HOST_FRONTEND_FALLBACK[window.location.hostname] || "http://localhost:3000";
+    return FRONTEND_URL;
+}
+
+function getFrontendUrl() {
+    if (FRONTEND_URL) {
+        return FRONTEND_URL;
+    }
+    return (
+        (window.__PIA_CONFIG__ && window.__PIA_CONFIG__.frontendUrl) ||
+        HOST_FRONTEND_FALLBACK[window.location.hostname] ||
+        "http://localhost:3000"
+    );
+}
 
 
 
 
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    await initFrontendUrl();
     console.log('🚀 DOM Content Loaded');
+    console.log('🔗 Frontend URL:', getFrontendUrl());
     console.log('📍 Current URL:', window.location.href);
     console.log('📍 Current search params:', window.location.search);
     
@@ -146,7 +184,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Backend requires authentication - redirect unauthenticated users to frontend
 function redirectToFrontend() {
-    const frontendUrl = FRONTEND_URL;
+    const frontendUrl = getFrontendUrl();
 
     console.log('🔐 Authentication required - redirecting to frontend:', frontendUrl);
     
@@ -374,14 +412,17 @@ function displayUserProfile(userData) {
     userProfile.classList.add('show');
 
 
+    const editProfileUrl = () =>
+        `${getFrontendUrl()}/edit-profile?userId=${encodeURIComponent(userData.user_id || "")}`;
+
     userProfile.onclick = () => {
-        window.location.href = `${FRONTEND_URL}/edit-profile?userId=${encodeURIComponent(userData.user_id || '')}`;
+        window.location.href = editProfileUrl();
     };
 
     userProfile.onkeydown = (event) => {
         if (event.key === 'Enter' || event.key === ' ') {
             event.preventDefault();
-            window.location.href = `${FRONTEND_URL}/edit-profile?userId=${encodeURIComponent(userData.user_id || '')}`;
+            window.location.href = editProfileUrl();
         }
     };
 

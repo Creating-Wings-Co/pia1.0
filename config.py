@@ -66,10 +66,16 @@ class Config:
     AUTH0_CLIENT_SECRET = os.getenv("AUTH0_CLIENT_SECRET", "").strip()
     AUTH0_NEXTJS_URL = os.getenv("AUTH0_NEXTJS_URL", "http://localhost:3000").strip()
     # React SPA URL (login/register). Used by chat UI for edit-profile and auth redirects.
-    FRONTEND_URL = (
-        os.getenv("FRONTEND_URL", "").strip()
-        or AUTH0_NEXTJS_URL
-    ).rstrip("/")
+    _frontend_env = os.getenv("FRONTEND_URL", "").strip()
+    _nextjs_env = os.getenv("AUTH0_NEXTJS_URL", "").strip()
+    if _frontend_env:
+        FRONTEND_URL = _frontend_env.rstrip("/")
+    elif _nextjs_env and _nextjs_env != "http://localhost:3000":
+        FRONTEND_URL = _nextjs_env.rstrip("/")
+    elif ENVIRONMENT == "production":
+        FRONTEND_URL = "https://pia1-0.vercel.app"
+    else:
+        FRONTEND_URL = "http://localhost:3000"
 
     @classmethod
     def is_production(cls) -> bool:
