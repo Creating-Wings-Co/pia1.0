@@ -3,31 +3,30 @@ frontend:
   phases:
     preBuild:
       commands:
-        - cd frontend
+        - cd Frontend-1
         - npm install
     build:
       commands:
         - export PUBLIC_URL=/
         - npm run build
   artifacts:
-    baseDirectory: frontend/build
+    baseDirectory: Frontend-1/build
     files:
-      - '**/*'
+      - "**/*"
   cache:
     paths:
-      - frontend/node_modules/**/*
-      - frontend/build/**/*
+      - Frontend-1/node_modules/**/*
+      - Frontend-1/build/**/*
   customHeaders:
-    - pattern: '**/*'
+    - pattern: "**/*"
       headers:
-        - key: 'X-Content-Type-Options'
-          value: 'nosniff'
-        - key: 'X-Frame-Options'
-          value: 'DENY'
-        - key: 'X-XSS-Protection'
-          value: '1; mode=block'
+        - key: X-Content-Type-Options
+          value: nosniff
+        - key: X-Frame-Options
+          value: DENY
+        - key: X-XSS-Protection
+          value: 1; mode=block
   customRewrites:
-    - source: '</^[^.]+$|\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|eot)$)([^.]+$)/>'
-      target: '/index.html'
-      status: '200'
-
+    - source: </^[^.]+$|\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|eot)$)([^.]+$)/>
+      target: /index.html
+      status: "200"
