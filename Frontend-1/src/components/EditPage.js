@@ -34,6 +34,9 @@ class EditPage extends Component {
       passwordError: "",
       termsError: "",
       loading: true,
+      showDeleteConfirm: false,
+      deleting: false,
+      deleteError: "",
     };
   }
 
@@ -281,8 +284,64 @@ class EditPage extends Component {
     document.body.style.overflow = "auto";
   };
 
+  openDeleteConfirm = () => {
+    this.setState({ showDeleteConfirm: true, deleteError: "" });
+    document.body.style.overflow = "hidden";
+  };
+
+  closeDeleteConfirm = () => {
+    if (this.state.deleting) return;
+    this.setState({ showDeleteConfirm: false, deleteError: "" });
+    document.body.style.overflow = "auto";
+  };
+
+  handleDeleteAccount = async () => {
+    if (!API_BASE) {
+      this.setState({
+        deleteError: "Server URL is not configured. Set REACT_APP_API_BASE_URL on Vercel.",
+      });
+      return;
+    }
+
+    this.setState({ deleting: true, deleteError: "" });
+
+    try {
+      const { getAccessTokenSilently, logout } = this.props.auth0;
+      const token = await getAuth0AccessToken(getAccessTokenSilently);
+
+      const response = await fetch(`${API_BASE}/api/user/me`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Account deletion failed:", response.status, errorText);
+        this.setState({
+          deleting: false,
+          deleteError: formatApiError(response.status, errorText),
+        });
+        return;
+      }
+
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("userId");
+      document.body.style.overflow = "auto";
+      logout({ logoutParams: { returnTo: `${window.location.origin}/login` } });
+    } catch (err) {
+      console.error("Account deletion error:", err);
+      this.setState({
+        deleting: false,
+        deleteError: formatClientError(err),
+      });
+    }
+  };
+
   render() {
-    const { showTerms, termsContent, loading } = this.state;
+    const { showTerms, termsContent, loading, showDeleteConfirm, deleting, deleteError } =
+      this.state;
 
     if (loading) {
       return <div className="register-container">Loading profile...</div>;
@@ -290,7 +349,9 @@ class EditPage extends Component {
 
     return (
       <>
-        <div className={`register-container ${showTerms ? "blurred" : ""}`}>
+        <div
+          className={`register-container ${showTerms || showDeleteConfirm ? "blurred" : ""}`}
+        >
           <div className="register-form">
             <img src="/logo.png" alt="Logo" className="register-logo" />
             <h2>Edit Profile</h2>
@@ -435,6 +496,14 @@ class EditPage extends Component {
               <button type="submit">Save Changes</button>
             </form>
 
+            <button
+              type="button"
+              className="delete-account-btn"
+              onClick={this.openDeleteConfirm}
+            >
+              Delete Account
+            </button>
+
             <div className="link-text">
               <Link to="/login">Back</Link>
             </div>
@@ -454,6 +523,37 @@ class EditPage extends Component {
                 </button>
                 <button className="close-btn" onClick={this.closeTerms}>
                   Close
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {showDeleteConfirm && (
+          <div className="modal-overlay">
+            <div className="modal-box">
+              <h3>Delete Account</h3>
+              <div className="modal-content">
+                <p>
+                  This permanently deletes your profile and chat history. This
+                  cannot be undone.
+                </p>
+                {deleteError && <div className="inline-error">{deleteError}</div>}
+              </div>
+              <div className="modal-buttons">
+                <button
+                  className="delete-confirm-btn"
+                  onClick={this.handleDeleteAccount}
+                  disabled={deleting}
+                >
+                  {deleting ? "Deleting..." : "Delete my account"}
+                </button>
+                <button
+                  className="close-btn"
+                  onClick={this.closeDeleteConfirm}
+                  disabled={deleting}
+                >
+                  Cancel
                 </button>
               </div>
             </div>

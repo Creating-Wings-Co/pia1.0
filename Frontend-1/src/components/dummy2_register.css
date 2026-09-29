@@ -221,6 +221,40 @@ input.error {
   background: #bbb;
 }
 
+/* Delete account */
+.register-form .delete-account-btn {
+  background: transparent;
+  color: #d32f2f;
+  border: 1px solid #d32f2f;
+  margin-top: 4px;
+}
+
+.register-form .delete-account-btn:hover {
+  background: #d32f2f;
+  color: white;
+}
+
+.delete-confirm-btn {
+  background: #d32f2f;
+  padding: 10px 18px;
+  border: none;
+  border-radius: 8px;
+  color: white;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.delete-confirm-btn:hover {
+  background: #b71c1c;
+}
+
+.delete-confirm-btn:disabled,
+.close-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
 /* Fade animation */
 @keyframes fadeIn {
   from { opacity: 0; transform: scale(0.95); }

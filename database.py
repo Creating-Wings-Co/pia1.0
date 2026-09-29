@@ -210,6 +210,16 @@ class Database:
             logger.error("Error clearing conversation: %s", type(e).__name__)
             return False
 
+    def delete_user(self, auth0_sub: str) -> bool:
+        """Permanently delete a user and all of their conversation data."""
+        try:
+            self.conversations.delete_many({"auth0_sub": auth0_sub})
+            result = self.users.delete_one({"auth0_sub": auth0_sub})
+            return result.deleted_count > 0
+        except Exception as e:
+            logger.error("Error deleting user: %s", type(e).__name__)
+            raise
+
     def cleanup_old_conversations(self, days: int = 1):
         try:
             cutoff = datetime.now(timezone.utc) - timedelta(days=days)
