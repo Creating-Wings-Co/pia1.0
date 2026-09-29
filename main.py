@@ -26,7 +26,7 @@ from database import Database
 from vector_store import VectorStore
 from rag_system import RAGSystem
 from web_search import WebSearchService
-from auth0_utils import get_current_user, verify_token
+from auth0_utils import get_current_user, verify_token, delete_auth0_user
 
 logger = logging.getLogger(__name__)
 
@@ -320,6 +320,29 @@ async def get_current_user_info(user: Dict = Depends(get_user_from_token)):
         "marital_status": db_user.get("maritalStatus"),
     }
 
+
+@app.delete("/api/user/me")
+async def delete_current_user(user: Dict = Depends(get_user_from_token)):
+    """Permanently delete the authenticated user's account and conversation data"""
+    auth0_sub = user.get("sub")
+    if not auth0_sub:
+        raise HTTPException(status_code=400, detail="Invalid user token")
+
+    if not db.get_user_by_auth0_sub(auth0_sub):
+        raise HTTPException(status_code=404, detail="User not found")
+
+    try:
+        db.delete_user(auth0_sub)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to delete account")
+
+    # Remove the Auth0 (Google-linked) identity too, if Management API credentials are set
+    auth0_deleted = delete_auth0_user(auth0_sub)
+
+    return {
+        "message": "Account deleted",
+        "auth0_deleted": auth0_deleted,
+    }
 
 
 @app.get("/api/user/{user_id}")
