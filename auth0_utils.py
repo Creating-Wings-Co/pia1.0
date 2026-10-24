@@ -195,3 +195,48 @@ def get_current_user(token: Optional[str] = None) -> Dict:
     payload = verify_token(token)
     return payload
 
+
+
+def auth0_management_is_configured() -> bool:
+    return bool(Config.AUTH0_DOMAIN and Config.AUTH0_CLIENT_ID and Config.AUTH0_CLIENT_SECRET)
+
+
+def delete_auth0_user(auth0_sub: str) -> bool:
+    """
+    Delete a user from Auth0 via the Management API (removes the Google-linked identity).
+
+    Returns True if deleted (or already gone), False if not configured or the call failed.
+    """
+    if not auth0_management_is_configured():
+        return False
+
+    from urllib.parse import quote
+
+    base_url = f"https://{Config.AUTH0_DOMAIN}"
+    try:
+        token_resp = requests.post(
+            f"{base_url}/oauth/token",
+            json={
+                "grant_type": "client_credentials",
+                "client_id": Config.AUTH0_CLIENT_ID,
+                "client_secret": Config.AUTH0_CLIENT_SECRET,
+                "audience": f"{base_url}/api/v2/",
+            },
+            timeout=10,
+        )
+        token_resp.raise_for_status()
+        mgmt_token = token_resp.json()["access_token"]
+
+        delete_resp = requests.delete(
+            f"{base_url}/api/v2/users/{quote(auth0_sub, safe='')}",
+            headers={"Authorization": f"Bearer {mgmt_token}"},
+            timeout=10,
+        )
+        # Auth0 returns 204 on success; 404 means the user is already gone
+        if delete_resp.status_code in (200, 204, 404):
+            return True
+        logger.error("Auth0 user delete failed: status=%s", delete_resp.status_code)
+        return False
+    except Exception as e:
+        logger.error("Auth0 user delete error: %s", type(e).__name__)
+        return False
